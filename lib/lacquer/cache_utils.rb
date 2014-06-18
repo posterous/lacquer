@@ -4,8 +4,10 @@ module Lacquer
       base.class_eval do
         attr_reader :cache_ttl
 
-        before_filter :set_default_cache_ttl
-        after_filter :send_cache_control_headers
+        if respond_to? :before_filter
+          before_filter :set_default_cache_ttl
+          after_filter :send_cache_control_headers
+        end
       end
     end
 
@@ -28,12 +30,12 @@ module Lacquer
         case Lacquer.configuration.job_backend
         when :delayed_job
           require 'lacquer/delayed_job_job'
-          Delayed::Job.enqueue(Lacquer::DelayedJobJob.new('url.purge ' << path))
+          Delayed::Job.enqueue(Lacquer::DelayedJobJob.new(path))
         when :resque
           require 'lacquer/resque_job'
-          Resque.enqueue(Lacquer::ResqueJob, 'url.purge ' << path)
+          Resque.enqueue(Lacquer::ResqueJob, path)
         when :none
-          Varnish.new.purge('url.purge ' << path)
+          Varnish.new.purge(path)
         end
       end
     end
@@ -43,7 +45,7 @@ module Lacquer
     # to set cache properly.
     def send_cache_control_headers
       if Lacquer.configuration.enable_cache && @cache_ttl && @cache_ttl != 0
-        expires_in(@cache_ttl, :public => true, :private => false)
+        expires_in(@cache_ttl, :public => true)
       end
     end
   end

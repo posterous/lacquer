@@ -12,11 +12,18 @@ describe "Lacquer" do
     end
 
     describe "when backend is :none" do
-      it "sends commands to varnish instantly" do
+      before(:each) do
         Lacquer.configuration.job_backend = :none
+      end
 
+      it "sends commands to varnish instantly" do
         @varnish_stub.should_receive(:purge).twice
         @controller.clear_cache_for('/', '/blog/posts')
+      end
+
+      it "calls purge with the correct parameter" do
+        @varnish_stub.should_receive(:purge).with('/')
+        @controller.clear_cache_for('/')
       end
     end
 
@@ -60,5 +67,15 @@ describe "Lacquer" do
         @controller.send_cache_control_headers
       end
     end
+  end
+
+  it "should allow purge by non-controller sweepers" do
+    @varnish_stub = mock('varnish')
+    Lacquer::Varnish.stub!(:new).and_return(@varnish_stub)
+
+    @sweeper = SweeperClass.new
+
+    @varnish_stub.should_receive(:purge)
+    @sweeper.clear_cache_for('/')
   end
 end
